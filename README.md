@@ -1,6 +1,8 @@
 # Tshirtgang.com Opencart Extension
 
-for Opencart V3.x
+For Opencart V3.x
+
+Built and tested on 3.0.3.6
 
 ## How to install
 1. Download or clone repo
