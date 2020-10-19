@@ -14,6 +14,10 @@ Built and tested on 3.0.3.6
 2. Go to Extensions > Extensions
 3. Select "Modules" from dropdown menu
 4. Locate "Tshirtgang" module and click the green Install button.
-5. Click the blue Edit icon beside Tshirtgang extension
-6. Copy and paste your API Key from https://www.tshirtgang.com/cp/account#authkey and paste into opencart extension.
-7. Click save.
+
+## Link your store with Tshirtgang.com
+1. Navigate to https://www.tshirtgang.com and login to your Tshirtgang account.
+2. Under the Account Settings menu at the top, click Opencart Settings
+3. Enter your Store URL (e.g. https://myopencartstore.com)
+4. Enter your API Username and API Key from your opencart store (Opencart admin > Settings > Users > API)
+5. Click "Connect Tshirtgang App"
