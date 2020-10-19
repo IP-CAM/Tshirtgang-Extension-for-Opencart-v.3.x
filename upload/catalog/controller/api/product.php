@@ -1,5 +1,6 @@
 <?php
 class ControllerApiProduct extends Controller {
+	public $version = 200; //version number
 	public function index() {
 		$this->load->language('api/product');
 
@@ -78,7 +79,7 @@ class ControllerApiProduct extends Controller {
 				$Style_option_id = "";
 				$Color_option_id = "";
 				$Size_option_id = "";
-				/* ----- WORKS ----- Uncomment after finished testing.
+				
 				//check if product already exists
 				$getSKU = $this->db->query("SELECT product_id FROM " . DB_PREFIX . "product WHERE sku ='".$this->db->escape($this->request->post['sku'])."'");
 				foreach ($getSKU->rows as $row) {
@@ -88,7 +89,7 @@ class ControllerApiProduct extends Controller {
 						exit;
 					}
 				}
-				*/
+				
 				//get option ids
 				$getattr = $this->db->query("SELECT option_id FROM " . DB_PREFIX . "option_description WHERE name = 'Style'");
 				foreach ($getattr->rows as $row) {
@@ -140,45 +141,28 @@ class ControllerApiProduct extends Controller {
 					$Size_option_id = $this->db->getLastId();
 				}
 				
-
+				//minimum version number
+				if($this->request->post['min_ver'] < $this->version) {
+					$json['error'] = $this->language->get('version_outdated');
+				}
 				// Add a new voucher if set
 				if ((utf8_strlen($this->request->post['title']) < 1) || (utf8_strlen($this->request->post['title']) > 64)) {
-					$json['error']['from_name'] = $this->language->get('error_from_name');
+					$json['error'] = $this->language->get('missing_title');
 				}
-				/*
-				if (($this->request->post['amount'] < $this->config->get('config_voucher_min')) || ($this->request->post['amount'] > $this->config->get('config_voucher_max'))) {
-					$json['error']['amount'] = sprintf($this->language->get('error_amount'), $this->currency->format($this->config->get('config_voucher_min'), $this->session->data['currency']), $this->currency->format($this->config->get('config_voucher_max'), $this->session->data['currency']));
-				}
-				*/
 
 				if (!$json) {
 					$code = mt_rand();
-					/*
-					$code = mt_rand();
-					
-					$this->session->data['vouchers'][$code] = array(
-						'code'             => $code,
-						'description'      => sprintf($this->language->get('text_for'), $this->currency->format($this->currency->convert($this->request->post['amount'], $this->session->data['currency'], $this->config->get('config_currency')), $this->session->data['currency']), $this->request->post['to_name']),
-						'to_name'          => $this->request->post['to_name'],
-						'to_email'         => $this->request->post['to_email'],
-						'from_name'        => $this->request->post['from_name'],
-						'from_email'       => $this->request->post['from_email'],
-						'voucher_theme_id' => $this->request->post['voucher_theme_id'],
-						'message'          => $this->request->post['message'],
-						'amount'           => $this->currency->convert($this->request->post['amount'], $this->session->data['currency'], $this->config->get('config_currency'))
-					);
-					*/
+
 					$this->session->data['product'][$code] = array(
 						'title'             => $this->request->post['title']
 					);
 
-					//$this->db->query("INSERT INTO `" . DB_PREFIX . "squareup_token` SET customer_id='" . (int)$customer_id . "', sandbox='" . (int)$sandbox . "', token='" . $this->db->escape($data['id']) . "', brand='" . $this->db->escape($data['card_brand']) . "', ends_in='" . (int)$data['last_4'] . "', date_added=NOW()");
-					//echo "INSERT INTO " . DB_PREFIX . "product SET model = '" . $this->db->escape($this->request->post['title']) . "'";
 					$this->db->query("INSERT INTO " . DB_PREFIX . "product SET model = '" . $this->db->escape($this->request->post['sku']) . "',
 						quantity='999', 
 						sku = '" . $this->db->escape($this->request->post['sku']) . "',
 						status = '1',
-						price = '20.99',
+						price = '" . $this->db->escape($this->request->post['base_price']) . "',
+						image = 'catalog/{$this->db->escape($this->request->post['sku'])}.png',
 						date_available = NOW(),
 						date_added = NOW()");
 					//get last insert id
@@ -189,34 +173,64 @@ class ControllerApiProduct extends Controller {
 						name ='" . $this->db->escape($this->request->post['title']) . "',
 						meta_title ='" . $this->db->escape($this->request->post['title']) . "',
 						language_id = '$Language_id',
-						description ='" . $this->db->escape($this->request->post['description']) . "'");
+						description ='" . $this->db->escape(htmlspecialchars($this->request->post['description'])) . "'");
 					
-
-					/** Insert Sizing **/
-					//get list of option_value_id
-					$option_value_id_sizeArray = array();
-					$getattr = $this->db->query("SELECT option_value_id, name FROM " . DB_PREFIX . "option_value_description WHERE option_id = '$Size_option_id'");
-					foreach ($getattr->rows as $row) {
-						$option_value_id_sizeArray[$row['option_value_id']] = $row['name'];
-					}
-					$sizes = array("Small", "Medium", "Large");
 					//enable size options
 					$this->db->query("INSERT INTO " . DB_PREFIX . "product_option SET product_id = '$product_id',
 						option_id ='$Size_option_id',
 						required = '1'");
 					$product_option_id_size = $this->db->getLastId();
 
-					print_r($option_value_id_sizeArray);
-					//variations
-					foreach($sizes as $size_id => $size_value) {
-						$product_option_id = array_search($size_value, $option_value_id_sizeArray);
+					/** Insert variations **/
+					foreach($this->request->post['variations'] as $key => $value) {
+						$product_option_description_id_style = "";
+						$product_option_description_id_color = "";
+						$product_option_description_id_size = "";
+						$insert_style = $this->db->escape($this->request->post['variations'][$key]['Style']);
+						$insert_color = $this->db->escape($this->request->post['variations'][$key]['Color']);
+						$insert_size = $this->db->escape($this->request->post['variations'][$key]['Size']);
+						$insert_price = $this->db->escape($this->request->post['variations'][$key]['Price']);
+
+						//get list of option_value_id
+						$option_value_id_sizeArray = array();
+						$getattr = $this->db->query("SELECT option_value_id FROM " . DB_PREFIX . "option_value_description WHERE option_id = '$Size_option_id' AND name='$insert_size'");
+						foreach ($getattr->rows as $row) {
+							//$option_value_id_sizeArray[$row['option_value_id']] = $row['name'];
+							$product_option_description_id_size = $row['option_value_id'];
+						}
+						//if not available, insert it
+						if(!$product_option_description_id_size) {
+							$this->db->query("INSERT INTO " . DB_PREFIX . "option_value SET option_id = '$Size_option_id'");
+							$option_value_id = $this->db->getLastId();
+
+							$this->db->query("INSERT INTO " . DB_PREFIX . "option_value_description SET option_value_id = '$option_value_id',
+							language_id = '$Language_id',
+							option_id = '$Size_option_id',
+							name = '$insert_size'");
+							$product_option_description_id_size = $this->db->getLastId();
+						}
+
+						//insert variations
 						$this->db->query("INSERT INTO " . DB_PREFIX . "product_option_value SET product_id = '$product_id',
 						product_option_id ='$product_option_id_size',
 						option_id = '$Size_option_id',
-						option_value_id = '$product_option_id',
+						option_value_id = '$product_option_description_id_size',
 						quantity = '999',
-						price = '10.00'");
+						price_prefix = '+',
+						price = '$insert_price'");
+						
 					}
+
+					//insert product
+					if(copy($this->request->post['image_url'], DIR_IMAGE."catalog/".$this->request->post['sku'].".png")) {
+						//add images
+						$this->db->query("INSERT INTO " . DB_PREFIX . "product_image SET product_id = '$product_id',
+							image = 'catalog/{$this->db->escape($this->request->post['sku'])}.png'");
+					}
+
+					//enable store
+					$this->db->query("INSERT INTO " . DB_PREFIX . "product_to_store SET product_id = '$product_id'");
+
 					$json['success'] = $this->language->get('text_cart');
 
 					unset($this->session->data['shipping_method']);
