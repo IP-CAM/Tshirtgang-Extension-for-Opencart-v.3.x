@@ -264,17 +264,17 @@ class ControllerApiTshirtgang extends Controller {
 				}
 			}
 
-			$getattr = $this->db->query("SELECT oc_order.*, oc_order_product.model, oc_order_product.quantity, order_option_size.value AS SizeType, order_option_color.value AS ColorType
-			FROM `oc_order` 
-			RIGHT JOIN oc_order_product 
-				ON oc_order.order_id = oc_order_product.order_id
-			RIGHT JOIN oc_order_option AS order_option_size
-				ON oc_order_product.order_product_id = order_option_size.order_product_id AND order_option_size.name = 'Size'
-			RIGHT JOIN oc_order_option AS order_option_color
-				ON oc_order_product.order_product_id = order_option_color.order_product_id AND order_option_color.name = 'Color'
-			RIGHT JOIN oc_order_status 
-				ON oc_order.order_status_id = oc_order_status.order_status_id
-			WHERE oc_order.date_added > '".$this->db->escape($this->request->post['lastscan'])."' AND oc_order_status.name IN('Processing', 'Pending', 'Processed')
+			$getattr = $this->db->query("SELECT " . DB_PREFIX . "order.*, " . DB_PREFIX . "order_product.model, " . DB_PREFIX . "order_product.quantity, order_option_size.value AS SizeType, order_option_color.value AS ColorType
+			FROM `" . DB_PREFIX . "order` 
+			RIGHT JOIN " . DB_PREFIX . "order_product 
+				ON " . DB_PREFIX . "order.order_id = " . DB_PREFIX . "order_product.order_id
+			RIGHT JOIN " . DB_PREFIX . "order_option AS order_option_size
+				ON " . DB_PREFIX . "order_product.order_product_id = order_option_size.order_product_id AND order_option_size.name = 'Size'
+			RIGHT JOIN " . DB_PREFIX . "order_option AS order_option_color
+				ON " . DB_PREFIX . "order_product.order_product_id = order_option_color.order_product_id AND order_option_color.name = 'Color'
+			RIGHT JOIN " . DB_PREFIX . "order_status 
+				ON " . DB_PREFIX . "order.order_status_id = " . DB_PREFIX . "order_status.order_status_id
+			WHERE " . DB_PREFIX . "order.date_added > '".$this->db->escape($this->request->post['lastscan'])."' AND " . DB_PREFIX . "order_status.name IN('Processing', 'Pending', 'Processed')
 		  	");
 			foreach ($getattr->rows as $row) {
 				array_push($orders,
@@ -302,6 +302,74 @@ class ControllerApiTshirtgang extends Controller {
 
 			$this->response->addHeader('Content-Type: application/json');
 			$this->response->setOutput(json_encode($orders));
+
+		}
+	}
+	/**
+	 * Update Tracking
+	 *
+	 * @return  [type]
+	 *
+	 * @example
+	 */
+	public function shipitem() {
+		$this->load->language('api/order');
+
+		$json = array();
+
+		if (!isset($this->session->data['api_id'])) {
+			$json['error']['warning'] = $this->language->get('error_permission');
+
+		} else {
+
+			$keys = array();
+			foreach ($keys as $key) {
+				if (!isset($this->request->post[$key])) {
+					$this->request->post[$key] = '';
+				}
+			}
+			//get shipped status id
+			$getattr = $this->db->query("SELECT order_status_id FROM " . DB_PREFIX . "order_status WHERE name = 'Shipped'");
+			foreach ($getattr->rows as $row) {
+				$order_status_id = $row['order_status_id'];
+			}
+			$shipping_courier_id = "";
+			//get shipping courier, or insert it
+			$getattr = $this->db->query("SELECT shipping_courier_id FROM " . DB_PREFIX . "shipping_courier WHERE shipping_courier_name = '".$this->db->escape($this->request->post['courier'])."'");
+			foreach ($getattr->rows as $row) {
+				$shipping_courier_id = $row['shipping_courier_id'];
+			}
+			if(!$shipping_courier_id) {
+				$NextId = 0;
+				//get max
+				$getattr = $this->db->query("SELECT MAX(shipping_courier_id) FROM " . DB_PREFIX . "shipping_courier");
+				foreach ($getattr->rows as $row) {
+					$NextId = $row['MAX(shipping_courier_id)']++;
+				}
+
+				$this->db->query("INSERT INTO " . DB_PREFIX . "shipping_courier SET shipping_courier_id = '$NextId',
+					shipping_courier_code = '".$this->db->escape($this->request->post['courier_code'])."',
+					shipping_courier_name = '".$this->db->escape($this->request->post['courier'])."'");
+				//get last insert id
+				$shipping_courier_id = $this->db->getLastId();
+			}
+
+
+			//update order table
+			$getattr = $this->db->query("UPDATE " . DB_PREFIX . "order SET tracking = '".$this->db->escape($this->request->post['tracking'])."', 
+				order_status_id = '$order_status_id'
+				WHERE order_id = '".$this->db->escape($this->request->post['oc_order_id'])."'");
+			
+			//create shipment 
+			$this->db->query("INSERT INTO " . DB_PREFIX . "order_shipment SET order_id = '".$this->db->escape($this->request->post['oc_order_id'])."',
+				date_added = NOW(),
+				shipping_courier_id = '$shipping_courier_id',
+				tracking_number = '".$this->db->escape($this->request->post['tracking'])."'");
+
+			$json['success'] = $this->language->get('tracking_updates');
+
+			$this->response->addHeader('Content-Type: application/json');
+			$this->response->setOutput(json_encode($json));
 
 		}
 	}

@@ -66,14 +66,6 @@ class ControllerExtensionModuleTshirtgang extends Controller
 			$data['name'] = '';
 		}
 
-		if (isset($this->request->post['module_description'])) {
-			$data['module_description'] = $this->request->post['module_description'];
-		} elseif (!empty($module_info)) {
-			$data['module_description'] = $module_info['module_description'];
-		} else {
-			$data['module_description'] = array();
-		}
-
 		if (isset($this->request->post['status'])) {
 			$data['status'] = $this->request->post['status'];
 		} elseif (!empty($module_info)) {
