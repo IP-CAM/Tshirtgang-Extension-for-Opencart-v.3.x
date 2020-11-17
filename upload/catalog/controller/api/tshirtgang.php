@@ -1,6 +1,6 @@
 <?php
 class ControllerApiTshirtgang extends Controller {
-	public $version = 200; //version number
+	public $version = 201; //version number
 	public function index() {
 		$this->load->language('api/tshirtgang');
 
@@ -156,7 +156,7 @@ class ControllerApiTshirtgang extends Controller {
 					);
 
 					$this->db->query("INSERT INTO " . DB_PREFIX . "product SET model = '" . $this->db->escape($this->request->post['sku']) . "',
-						quantity='999', 
+						quantity='998', 
 						sku = '" . $this->db->escape($this->request->post['sku']) . "',
 						status = '1',
 						price = '" . $this->db->escape($this->request->post['base_price']) . "',
@@ -185,6 +185,8 @@ class ControllerApiTshirtgang extends Controller {
 						required = '1'");
 					$product_option_id_size = $this->db->getLastId();
 
+					$usedColorArray = array();
+					$usedSizeArray = array();
 					/** Insert variations **/
 					foreach($this->request->post['variations'] as $key => $value) {
 						$product_option_description_id_style = "";
@@ -194,6 +196,22 @@ class ControllerApiTshirtgang extends Controller {
 						$insert_color = $this->db->escape($this->request->post['variations'][$key]['Color']);
 						$insert_size = $this->db->escape($this->request->post['variations'][$key]['Size']);
 						$insert_price = $this->db->escape($this->request->post['variations'][$key]['Price']);
+
+						//get list of option_value_id (COLOR)
+						$getattr = $this->db->query("SELECT option_value_id FROM " . DB_PREFIX . "option_value_description WHERE option_id = '$Color_option_id' AND name='$insert_color'");
+						foreach ($getattr->rows as $row) {
+							$product_option_description_id_color = $row['option_value_id'];
+						}
+						if(!$product_option_description_id_color) {
+							$this->db->query("INSERT INTO " . DB_PREFIX . "option_value SET option_id = '$Color_option_id'");
+							$option_value_id = $this->db->getLastId();
+
+							$this->db->query("INSERT INTO " . DB_PREFIX . "option_value_description SET option_value_id = '$option_value_id',
+							language_id = '$Language_id',
+							option_id = '$Color_option_id',
+							name = '$insert_color'");
+							$product_option_description_id_color = $this->db->getLastId();
+						}
 
 						//get list of option_value_id (SIZE)
 						$getattr = $this->db->query("SELECT option_value_id FROM " . DB_PREFIX . "option_value_description WHERE option_id = '$Size_option_id' AND name='$insert_size'");
@@ -210,16 +228,28 @@ class ControllerApiTshirtgang extends Controller {
 							name = '$insert_size'");
 							$product_option_description_id_size = $this->db->getLastId();
 						}
-
-						//insert variations - size
-						$this->db->query("INSERT INTO " . DB_PREFIX . "product_option_value SET product_id = '$product_id',
-						product_option_id ='$product_option_id_size',
-						option_id = '$Size_option_id',
-						option_value_id = '$product_option_description_id_size',
-						quantity = '999',
-						price_prefix = '+',
-						price = '$insert_price'");
-						
+						if(!in_array($insert_color, $usedColorArray)) {
+							//insert variations - color
+							$this->db->query("INSERT INTO " . DB_PREFIX . "product_option_value SET product_id = '$product_id',
+							product_option_id ='$product_option_id_color',
+							option_id = '$Color_option_id',
+							option_value_id = '$product_option_description_id_color',
+							quantity = '999',
+							price_prefix = '+',
+							price = '0.00'");
+							array_push($usedColorArray, $insert_color);
+						}
+						if(!in_array($insert_size, $usedSizeArray)) {
+							//insert variations - size
+							$this->db->query("INSERT INTO " . DB_PREFIX . "product_option_value SET product_id = '$product_id',
+							product_option_id ='$product_option_id_size',
+							option_id = '$Size_option_id',
+							option_value_id = '$product_option_description_id_size',
+							quantity = '999',
+							price_prefix = '+',
+							price = '$insert_price'");
+							array_push($usedSizeArray, $insert_size);
+						}
 					}
 
 					//insert product
