@@ -1,5 +1,7 @@
 # Tshirtgang.com Opencart Extension
 
+Version: **2.0.1**
+
 For Opencart V3.x
 
 Built and tested on 3.0.3.6
