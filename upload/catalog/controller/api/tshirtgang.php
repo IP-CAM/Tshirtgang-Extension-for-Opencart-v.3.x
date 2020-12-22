@@ -1,6 +1,6 @@
 <?php
 class ControllerApiTshirtgang extends Controller {
-	public $version = 201; //version number
+	public $version = 202; //version number
 	public function index() {
 		$this->load->language('api/tshirtgang');
 
@@ -144,7 +144,7 @@ class ControllerApiTshirtgang extends Controller {
 					$json['error'] = $this->language->get('version_outdated');
 				}
 				// Add a new voucher if set
-				if ((utf8_strlen($this->request->post['title']) < 1) || (utf8_strlen($this->request->post['title']) > 64)) {
+				if ((utf8_strlen($this->request->post['title']) < 1)) {
 					$json['error'] = $this->language->get('missing_title');
 				}
 
