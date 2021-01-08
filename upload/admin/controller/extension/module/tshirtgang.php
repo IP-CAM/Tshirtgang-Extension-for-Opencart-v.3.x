@@ -58,13 +58,6 @@ class ControllerExtensionModuleTshirtgang extends Controller
 		if (isset($this->request->get['module_id']) && ($this->request->server['REQUEST_METHOD'] != 'POST')) {
 			$module_info = $this->model_setting_module->getModule($this->request->get['module_id']);
 		}
-		if (isset($this->request->post['name'])) {
-			$data['name'] = $this->request->post['name'];
-		} elseif (!empty($module_info)) {
-			$data['name'] = $module_info['name'];
-		} else {
-			$data['name'] = '';
-		}
 
 		if (isset($this->request->post['status'])) {
 			$data['status'] = $this->request->post['status'];
@@ -88,10 +81,6 @@ class ControllerExtensionModuleTshirtgang extends Controller
 	{
 		if (!$this->user->hasPermission('modify', 'extension/module/tshirtgang')) {
 			$this->error['warning'] = $this->language->get('error_permission');
-		}
-
-		if ((utf8_strlen($this->request->post['name']) < 3) || (utf8_strlen($this->request->post['name']) > 64)) {
-			$this->error['name'] = $this->language->get('error_name');
 		}
 
 		return !$this->error;

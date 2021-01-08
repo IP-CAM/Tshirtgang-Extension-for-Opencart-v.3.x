@@ -140,7 +140,7 @@ class ControllerApiTshirtgang extends Controller {
 				}
 				
 				//minimum version number
-				if($this->request->post['min_ver'] < $this->version) {
+				if($this->version < $this->request->post['min_ver']) {
 					$json['error'] = $this->language->get('version_outdated');
 				}
 				// Add a new voucher if set
@@ -171,7 +171,7 @@ class ControllerApiTshirtgang extends Controller {
 						name ='" . $this->db->escape($this->request->post['title']) . "',
 						meta_title ='" . $this->db->escape($this->request->post['title']) . "',
 						language_id = '$Language_id',
-						description ='" . $this->db->escape(htmlspecialchars($this->request->post['description'])) . "'");
+						description ='" . $this->db->escape($this->request->post['description']) . "'");
 					
 					//enable color options
 					$this->db->query("INSERT INTO " . DB_PREFIX . "product_option SET product_id = '$product_id',
